@@ -1,4 +1,4 @@
-import { setupSdk, MpSdk } from "@matterport/sdk";
+import { setupSdk, MpSdk, MP_SDK } from "@matterport/sdk";
 import { addTagViaGraphQL, createBasicAuthToken } from "./tagService";
 
 // 環境変数から設定値を取得
@@ -9,7 +9,7 @@ const username = import.meta.env.VITE_MATTERPORT_USERNAME;
 const password = import.meta.env.VITE_MATTERPORT_PASSWORD;
 
 // SDK関連のキャッシュや制御変数
-let sdk: MpSdk;
+let sdk: any;
 let currentFloor: string;
 let intersectionCache: any; // 最後に検出された交差情報
 let poseCache: any; // カメラの姿勢情報
@@ -30,21 +30,40 @@ const tagLabelInput = document.getElementById(
   "tag-label-input"
 ) as HTMLInputElement;
 
-// アプリケーションのメイン処理を開始
-main();
+const params = `m=${modelSid}&play=1&qs=1&log=0&applicationKey=${sdkKey}`;
+const showcase = document.getElementById("showcase") as HTMLIFrameElement;
 
+// augment window with the MP_SDK property
+declare global {
+  interface Window {
+    MP_SDK: any;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (showcase === null) return;
+  showcase.setAttribute("src", `/bundle/showcase.html?${params}`);
+  showcase.addEventListener("load", () => main());
+});
+
+// main();
 async function main() {
+  if (showcase == null || showcase.contentWindow == null) return;
   // Matterport SDKの初期化
-  sdk = await setupSdk(sdkKey, {
-    space: spaceId,
-    container: viewer,
-  });
+  sdk = await showcase.contentWindow.MP_SDK.connect(showcase, sdkKey, "");
+  // sdk = await setupSdk(sdkKey, {
+  //   space: spaceId,
+  //   container: showcase,
+  // });
+
+  // 3Dモデルを表示
+  setup3DMdel(sdk);
 
   // 自動的に挿入されるiframe要素を取得
   iframe = document.getElementById("mp-showcase");
 
   // 現在のフロア情報を取得
-  sdk.Floor.current.subscribe((floor) => {
+  sdk.Floor.current.subscribe((floor: any) => {
     if (floor.id) {
       currentFloor = floor.id;
       console.log(floor.id);
@@ -52,7 +71,7 @@ async function main() {
   });
 
   // 既存のMattertag（タグ）一覧を取得して表示
-  sdk.Mattertag.getData().then((tags) => {
+  sdk.Mattertag.getData().then((tags: any) => {
     renderTags(tags);
   });
 
@@ -216,4 +235,33 @@ async function setupPointerListener(sdk: MpSdk) {
       buttonDisplayed = true;
     }
   }, 5);
+}
+
+async function setup3DMdel(sdk: any) {
+  // GLTF読み込み（例：H区画ラフプラン）
+  await sdk.Scene.createObjects(1);
+  const lights = await sdk.Scene.createNode();
+  lights.addComponent("mp.lights");
+  lights.start();
+  const modelNode1 = await sdk.Scene.createNode();
+  const objComponent1 = modelNode1.addComponent(
+    sdk.Scene.Component.GLTF_LOADER,
+    {
+      url: "/test.gltf",
+    }
+  );
+  modelNode1.obj3D.position.set(-36, 0, -28); //I
+  modelNode1.start();
+
+  // GLTF読み込み（例：H区画ラフプラン）
+  const modelNode2 = await sdk.Scene.createNode();
+  const objComponent2 = modelNode2.addComponent(
+    sdk.Scene.Component.GLTF_LOADER,
+    {
+      url: "/H区画ラフプラン.gltf",
+    }
+  );
+  objComponent2.inputs.localScale = { x: 1.0, y: 1.0, z: 1.0 };
+  modelNode2.obj3D.position.set(-39.5, 0, -30.3); // H
+  modelNode2.start();
 }

@@ -16,11 +16,21 @@
     <!-- メインコンテンツ -->
     <main class="flex-1 p-6 flex flex-col items-center space-y-6">
       <!-- Matterport Viewer -->
-      <div
+      <div>
+        <iframe
+          id="showcase"
+          width="800px"
+          height="600px"
+          frameborder="”0”"
+          allow="xr-spatial-tracking"
+          allowfullscreen
+        >
+        </iframe>
+      </div>
+      <!-- <div
         id="matterport-viewer"
         class="w-full h-[700px] bg-gray-100 rounded-lg shadow-lg border-2 border-blue-300"
-      ></div>
-
+      ></div> -->
       <!-- タグ追加ボタン -->
       <button
         id="add-tag"
